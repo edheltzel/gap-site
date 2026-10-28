@@ -152,6 +152,87 @@ report(circles >= 1, `favicon.svg has ${circles} <circle>`);
   await context.close();
 }
 
+// Favicon on real tab backgrounds at the sizes browsers use. The mark has to
+// read as a round shape on a dark tab (#202124) and a white tab (#ffffff).
+{
+  const lin = (v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  const ratio = (a, b) => {
+    const x = lum(a);
+    const y = lum(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  };
+  const tabs = { dark: [0x20, 0x21, 0x24], white: [255, 255, 255] };
+  const hex = (c) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+  const render = async (size, bg) => {
+    const context = await browser.newContext({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    await page.setContent(
+      `<style>html,body{margin:0;background:${bg || 'transparent'}}img{display:block;width:${size}px;height:${size}px}</style><img id="f" src="${base}/favicon.svg">`,
+    );
+    await page.waitForFunction(() => {
+      const img = document.getElementById('f');
+      return img.complete && img.naturalWidth > 0;
+    });
+    const png = PNG.sync.read(await page.screenshot({ omitBackground: !bg, clip: { x: 0, y: 0, width: size, height: size } }));
+    await context.close();
+    return png;
+  };
+  const px = (png, x, y) => {
+    const i = (y * png.width + x) * 4;
+    return [png.data[i], png.data[i + 1], png.data[i + 2], png.data[i + 3]];
+  };
+
+  for (const size of [16, 32, 64]) {
+    const mid = Math.floor(size / 2);
+    const last = size - 1;
+
+    // Corners stay transparent at every size.
+    const clear = await render(size, '');
+    const cornerAlpha = [px(clear, 0, 0), px(clear, last, 0), px(clear, 0, last), px(clear, last, last)].map((p) => p[3]);
+    report(cornerAlpha.every((a) => a === 0), `favicon ${size}px corners alpha=${cornerAlpha.join(',')} (need 0)`);
+
+    // Dark tab: the part of the mark that clears 3:1 against the tab fills the tile.
+    const dark = await render(size, hex(tabs.dark));
+    const r = size / 2;
+    let inside = 0;
+    let visible = 0;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (Math.hypot(x + 0.5 - r, y + 0.5 - r) > r) continue;
+        inside++;
+        const p = px(dark, x, y);
+        if (ratio(p, tabs.dark) >= 3) visible++;
+      }
+    }
+    const cover = visible / inside;
+    report(cover >= 0.5, `favicon ${size}px on dark tab covers ${(cover * 100).toFixed(0)}% of the inscribed disc (need >= 50%)`);
+    // A point inside the outer shape but outside the centre dot, on each side.
+    const off = Math.round(size * 0.375);
+    const samples = [px(dark, mid - off, mid), px(dark, mid + off - 1, mid), px(dark, mid, mid - off), px(dark, mid, mid + off - 1)];
+    const low = Math.min(...samples.map((p) => ratio(p, tabs.dark)));
+    report(low >= 3, `favicon ${size}px on dark tab shape vs #202124 contrast ${low.toFixed(2)} (need >= 3)`);
+
+    // White tab: the outermost edge of the mark stands out from white.
+    const white = await render(size, hex(tabs.white));
+    // Outermost mark pixel (alpha >= 128) met walking in from each side.
+    const clearPx = (x, y) => px(clear, x, y)[3] < 128;
+    const walk = (x, y, dx, dy) => {
+      while (clearPx(x, y)) {
+        x += dx;
+        y += dy;
+      }
+      return px(white, x, y);
+    };
+    const edges = [walk(0, mid, 1, 0), walk(last, mid, -1, 0), walk(mid, 0, 0, 1), walk(mid, last, 0, -1)];
+    const lowEdge = Math.min(...edges.map((p) => ratio(p, tabs.white)));
+    report(lowEdge >= 3, `favicon ${size}px on white tab outer edge vs #ffffff contrast ${lowEdge.toFixed(2)} (need >= 3)`);
+  }
+}
+
 await browser.close();
 server.close();
 console.log(lines.join('\n'));
