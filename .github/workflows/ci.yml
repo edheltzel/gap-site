@@ -15,6 +15,7 @@ jobs:
       - run: npm ci
       - run: npx astro check
       - run: npm run build
+      - run: npm run og-image
       - run: node scripts/contrast.mjs
       - name: Chrome for the flash check
         run: |
