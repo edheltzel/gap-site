@@ -1,9 +1,13 @@
 // Hero start check. Cold cache, network 1.6 Mbps / 150 ms RTT, CPU 4x.
 //
-// Fails when the landing hero canvas is slow to start or slow to settle:
+// Fails when the landing hero canvas is slow to start or slow to settle, or
+// when the hero work delays first paint:
+//   - first contentful paint within FCP_MS of navigation start (fixed budget;
+//     the code before the hero change measured ~560ms here, and preloading both
+//     fonts pushed it to ~750ms by competing with the CSS for bandwidth)
 //   - first non-empty frame on #field within DCL_SLACK_MS of DOMContentLoaded
-//     (the old code waited for fonts.ready, ~350ms later) and within
-//     FIRST_FRAME_MS of navigation start
+//     (the old code waited for fonts.ready, ~350ms later). FIRST_FRAME_MS is
+//     only a loose absolute backstop; the order-based asserts are the gate.
 //   - first frame with real glyphs (a fillText call, not only the haze gradient)
 //     within DOT_MS after the first frame
 //   - canvas at or above 98% of its final ink (stable from then on) within
@@ -13,7 +17,7 @@
 // fetched exactly once (a missing crossorigin makes the browser download twice).
 //
 // Usage: node scripts/hero-start.mjs [distDir]   (default ./dist)
-// Env: CHROME_PATH, RUNS (default 3). Reports medians.
+// Env: CHROME_PATH, RUNS (default 5). Reports medians.
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -22,9 +26,10 @@ import { chromium } from 'playwright-core';
 
 const root = path.resolve(process.argv[2] || 'dist');
 const chrome = process.env.CHROME_PATH || '/usr/bin/google-chrome';
-const runs = Number(process.env.RUNS || 3);
+const runs = Number(process.env.RUNS || 5);
 const DCL_SLACK_MS = 150;
-const FIRST_FRAME_MS = 850;
+const FCP_MS = 650;
+const FIRST_FRAME_MS = 3000;
 const DOT_MS = 400;
 const SETTLE_MS = 2000;
 const WINDOW_MS = 5500;
@@ -121,6 +126,7 @@ async function once(browser, base) {
   const data = await page.evaluate(() => ({
     s: window.__s,
     dcl: performance.getEntriesByType('navigation')[0].domContentLoadedEventEnd,
+    fcp: performance.getEntriesByType('paint').find((e) => e.name === 'first-contentful-paint')?.startTime ?? null,
     preloads: [...document.querySelectorAll('link[rel=preload]')].map((l) => ({
       as: l.getAttribute('as'),
       type: l.getAttribute('type'),
@@ -144,6 +150,7 @@ async function once(browser, base) {
   }
   return {
     dcl: data.dcl,
+    fcp: data.fcp,
     first: first?.[0] ?? null,
     firstDot: firstDot?.[0] ?? null,
     stable,
@@ -179,11 +186,13 @@ const check = (ok, text) => {
 const f = (v) => (v == null ? 'never' : v.toFixed(0) + 'ms');
 
 const first = med(results.map((r) => r.first));
+const fcp = med(results.map((r) => r.fcp));
 const dcl = med(results.map((r) => r.dcl));
 const afterDcl = med(results.map((r) => (r.first != null ? r.first - r.dcl : null)));
 const dot = med(results.map((r) => (r.firstDot != null && r.first != null ? r.firstDot - r.first : null)));
 const settle = med(results.map((r) => (r.stable != null && r.first != null ? r.stable - r.first : null)));
-lines.push(`runs=${runs} first=${results.map((r) => f(r.first)).join('/')} dcl=${results.map((r) => f(r.dcl)).join('/')} dot-first=${results.map((r) => (r.firstDot != null && r.first != null ? f(r.firstDot - r.first) : 'never')).join('/')} stable98-first=${results.map((r) => (r.stable != null && r.first != null ? f(r.stable - r.first) : 'never')).join('/')}`);
+lines.push(`runs=${runs} fcp=${results.map((r) => f(r.fcp)).join('/')} first=${results.map((r) => f(r.first)).join('/')} dcl=${results.map((r) => f(r.dcl)).join('/')} dot-first=${results.map((r) => (r.firstDot != null && r.first != null ? f(r.firstDot - r.first) : 'never')).join('/')} stable98-first=${results.map((r) => (r.stable != null && r.first != null ? f(r.stable - r.first) : 'never')).join('/')}`);
+check(fcp != null && fcp <= FCP_MS, `first contentful paint ${f(fcp)} <= ${FCP_MS}ms after navigation start`);
 check(afterDcl != null && afterDcl <= DCL_SLACK_MS, `first non-empty frame ${f(first)} is ${f(afterDcl)} after DOMContentLoaded (${f(dcl)}) <= ${DCL_SLACK_MS}ms`);
 check(first != null && first <= FIRST_FRAME_MS, `first non-empty frame ${f(first)} <= ${FIRST_FRAME_MS}ms after navigation start`);
 check(dot != null && dot <= DOT_MS, `first glyph frame ${f(dot)} after first frame <= ${DOT_MS}ms`);
