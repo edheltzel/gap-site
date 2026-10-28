@@ -23,4 +23,5 @@ jobs:
             sudo apt-get install -y google-chrome-stable
           fi
       - run: npm run flash
+      - run: npm run hero-start
       - run: npm run logo-round

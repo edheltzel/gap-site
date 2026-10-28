@@ -19,7 +19,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches || params
 const freeze = params.has('t') ? Number(params.get('t')) : null;
 const still = reduced || freeze !== null;
 const settled = 99;
-const resolveIn = 4.2;
+const resolveIn = 1.3;
 const period = 7;
 const ramp = ' .:-=+*#%@';
 const cellW = 6;
@@ -250,11 +250,14 @@ new MutationObserver(() => {
 addEventListener('resize', () => layout());
 
 readTheme();
-const start = () => {
+// Live: draw now on the fallback font and start the clock. The redraw when the
+// real font lands keeps the clock running, so the reveal does not restart.
+// Still: draw once, on the real font, as before.
+if (!still) {
   layout();
-  if (!still && !document.hidden) {
+  if (!document.hidden) {
     started = performance.now();
     frame = requestAnimationFrame(loop);
   }
-};
-(document.fonts?.ready ?? Promise.resolve()).then(start);
+}
+(document.fonts?.ready ?? Promise.resolve()).then(() => layout());
