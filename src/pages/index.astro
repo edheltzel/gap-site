@@ -141,7 +141,10 @@ import '../styles/landing.css';
         copy.textContent = 'Copy';
       }, 1200);
     } catch {
-      copy.textContent = 'Copy';
+      copy.textContent = 'Failed';
+      window.setTimeout(() => {
+        copy.textContent = 'Copy';
+      }, 1600);
     }
   });
 </script>
