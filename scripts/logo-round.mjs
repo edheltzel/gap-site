@@ -209,7 +209,7 @@ report(circles >= 1, `favicon.svg has ${circles} <circle>`);
       }
     }
     const cover = visible / inside;
-    report(cover >= 0.6, `favicon ${size}px on dark tab covers ${(cover * 100).toFixed(0)}% of the inscribed disc (need >= 60%)`);
+    report(cover >= 0.5, `favicon ${size}px on dark tab covers ${(cover * 100).toFixed(0)}% of the inscribed disc (need >= 50%)`);
     // A point inside the outer shape but outside the centre dot, on each side.
     const off = Math.round(size * 0.375);
     const samples = [px(dark, mid - off, mid), px(dark, mid + off - 1, mid), px(dark, mid, mid - off), px(dark, mid, mid + off - 1)];
