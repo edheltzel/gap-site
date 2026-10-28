@@ -15,7 +15,7 @@ npm run dev
 
 ## Hosting
 
-Cloudflare Pages. Build command `npm run build`, output directory `dist`, Node 22. Set the `SITE_URL` environment variable to the public origin (`https://gap.edheltzel.codes` or `https://bridgethegap.edheltzel.codes`). The chosen subdomain is set by the `SITE_URL` value only. There is no deploy config in this repo.
+Cloudflare Pages. Build command `npm run build`, output directory `dist`, Node 22. `SITE_URL` defaults to `https://gap.edheltzel.codes`. The chosen subdomain is set by the `SITE_URL` value only. There is no deploy config in this repo.
 
 ## Fonts
 
