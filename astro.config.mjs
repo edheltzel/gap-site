@@ -14,6 +14,10 @@ export default defineConfig({
       title: siteName,
       description: siteDescription,
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/edheltzel/GAP' }],
+      head: [
+        { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' } },
+      ],
       customCss: ['./src/styles/tokens.css', './src/styles/base.css', './src/styles/docs.css'],
       components: {
         ThemeProvider: './src/components/ThemeProvider.astro',
