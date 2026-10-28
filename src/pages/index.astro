@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import ThemeToggle from '../components/ThemeToggle.astro';
+---
+
+<Base>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="top">
+    <a href="/">GAP</a>
+    <nav aria-label="Primary">
+      <a href="/docs/">Docs</a>
+      <a href="https://github.com/edheltzel/GAP">GitHub</a>
+      <ThemeToggle />
+    </nav>
+  </header>
+  <main id="content">
+    <p>Global Agent Policies. The landing page is next.</p>
+  </main>
+</Base>
+
+<style>
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 var(--pad);
+  }
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  a {
+    color: inherit;
+  }
+  main {
+    padding: 48px var(--pad);
+  }
+</style>
