@@ -2,9 +2,15 @@
 //
 // Fails when the landing hero canvas is slow to start or slow to settle, or
 // when the hero work delays first paint:
-//   - first contentful paint within FCP_MS of navigation start (fixed budget;
-//     the code before the hero change measured ~560ms here, and preloading both
-//     fonts pushed it to ~750ms by competing with the CSS for bandwidth)
+//   - first contentful paint within FCP_OVER_CONTROL_MS of a control load of the
+//     same page with its external scripts and preloads removed, measured in the
+//     same run so machine load cancels out (the code before the hero change sat
+//     ~40ms over the control; preloading both fonts ~230ms, mono only ~190ms,
+//     because the fonts compete with the CSS for bandwidth). FCP_MS is only a
+//     loose absolute backstop: an absolute 650ms budget fails under CPU load.
+//     The allowance is max(100ms, 25% of the control) because the page's own
+//     script cost grows with CPU load too (measured +60..+175ms at load 13 on
+//     8 cores, still under 25%; mono-only idle was +36%, both fonts +44%).
 //   - first non-empty frame on #field within DCL_SLACK_MS of DOMContentLoaded
 //     (the old code waited for fonts.ready, ~350ms later). FIRST_FRAME_MS is
 //     only a loose absolute backstop; the order-based asserts are the gate.
@@ -29,15 +35,28 @@ const root = path.resolve(process.argv[2] || 'dist');
 const chrome = process.env.CHROME_PATH || '/usr/bin/google-chrome';
 const runs = Number(process.env.RUNS || 5);
 const DCL_SLACK_MS = 150;
-const FCP_MS = 650;
+const FCP_OVER_CONTROL_MS = 100;
+const FCP_OVER_CONTROL_PCT = 0.25;
+const FCP_MS = 1500;
 const FIRST_FRAME_MS = 3000;
 const DOT_MS = 400;
 const SETTLE_MS = 2000;
 const WINDOW_MS = 5500;
+const FCP_EXTRA_PAIRS = 6; // short page/control pairs, FCP only, to damp noise under load
 
 function serve(dir) {
   return http.createServer((req, res) => {
     const url = decodeURIComponent((req.url || '/').split('?')[0]);
+    if (url === '/__control') {
+      // Same page with the external scripts and preloads removed: what first paint costs with no hero work.
+      const html = fs
+        .readFileSync(path.join(dir, 'index.html'), 'utf8')
+        .replace(/<script[^>]*\ssrc=[^>]*><\/script>/g, '')
+        .replace(/<link[^>]*rel="preload"[^>]*>/g, '');
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      res.end(html);
+      return;
+    }
     let file = path.join(dir, url);
     if (url.endsWith('/')) file = path.join(file, 'index.html');
     else if (!path.extname(file)) {
@@ -95,7 +114,7 @@ const sampler = () => {
   requestAnimationFrame(poll);
 };
 
-async function once(browser, base) {
+async function once(browser, base, route = '/', windowMs = WINDOW_MS) {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     deviceScaleFactor: 1,
@@ -122,7 +141,7 @@ async function once(browser, base) {
   });
   await page.addInitScript(() => localStorage.setItem('gap-theme', 'dark'));
   await page.addInitScript(sampler);
-  await page.goto(base + '/', { waitUntil: 'commit' });
+  await page.goto(base + route, { waitUntil: 'commit' });
   await page.waitForFunction((ms) => performance.now() > ms, WINDOW_MS, { timeout: 60000, polling: 100 });
   const data = await page.evaluate(() => ({
     s: window.__s,
@@ -174,7 +193,18 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ executablePath: chrome, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 
 const results = [];
-for (let i = 0; i < runs; i++) results.push(await once(browser, base));
+const controls = [];
+for (let i = 0; i < runs; i++) {
+  results.push(await once(browser, base));
+  controls.push(await once(browser, base, '/__control', 1500));
+}
+// Extra short pairs for the FCP comparison only (page and control, alternating).
+const pairs = results.map((r, i) => [r.fcp, controls[i].fcp]);
+for (let i = 0; i < FCP_EXTRA_PAIRS; i++) {
+  const p = await once(browser, base, '/', 1500);
+  const c = await once(browser, base, '/__control', 1500);
+  pairs.push([p.fcp, c.fcp]);
+}
 await browser.close();
 server.close();
 
@@ -187,13 +217,18 @@ const check = (ok, text) => {
 const f = (v) => (v == null ? 'never' : v.toFixed(0) + 'ms');
 
 const first = med(results.map((r) => r.first));
-const fcp = med(results.map((r) => r.fcp));
+const fcp = med(pairs.map((p) => p[0]));
 const dcl = med(results.map((r) => r.dcl));
 const afterDcl = med(results.map((r) => (r.first != null ? r.first - r.dcl : null)));
 const dot = med(results.map((r) => (r.firstDot != null && r.first != null ? r.firstDot - r.first : null)));
 const settle = med(results.map((r) => (r.stable != null && r.first != null ? r.stable - r.first : null)));
 lines.push(`runs=${runs} fcp=${results.map((r) => f(r.fcp)).join('/')} first=${results.map((r) => f(r.first)).join('/')} dcl=${results.map((r) => f(r.dcl)).join('/')} dot-first=${results.map((r) => (r.firstDot != null && r.first != null ? f(r.firstDot - r.first) : 'never')).join('/')} stable98-first=${results.map((r) => (r.stable != null && r.first != null ? f(r.stable - r.first) : 'never')).join('/')}`);
-check(fcp != null && fcp <= FCP_MS, `first contentful paint ${f(fcp)} <= ${FCP_MS}ms after navigation start`);
+const ctl = med(pairs.map((p) => p[1]));
+const over = med(pairs.map((p) => (p[0] != null && p[1] != null ? p[0] - p[1] : null)));
+lines.push(`fcp pairs page/control (${pairs.length}): ${pairs.map((p) => `${f(p[0])}/${f(p[1])}`).join(' ')}`);
+const overBudget = Math.max(FCP_OVER_CONTROL_MS, FCP_OVER_CONTROL_PCT * (ctl ?? 0));
+check(over != null && over <= overBudget, `first contentful paint ${f(fcp)} is ${f(over)} over the no-hero control (${f(ctl)}) <= ${f(overBudget)} (max of ${FCP_OVER_CONTROL_MS}ms and ${FCP_OVER_CONTROL_PCT * 100}% of control)`);
+check(fcp != null && fcp <= FCP_MS, `first contentful paint ${f(fcp)} <= ${FCP_MS}ms after navigation start (loose backstop)`);
 check(afterDcl != null && afterDcl <= DCL_SLACK_MS, `first non-empty frame ${f(first)} is ${f(afterDcl)} after DOMContentLoaded (${f(dcl)}) <= ${DCL_SLACK_MS}ms`);
 check(first != null && first <= FIRST_FRAME_MS, `first non-empty frame ${f(first)} <= ${FIRST_FRAME_MS}ms after navigation start`);
 check(dot != null && dot <= DOT_MS, `first glyph frame ${f(dot)} after first frame <= ${DOT_MS}ms`);
