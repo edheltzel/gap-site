@@ -1,6 +1,6 @@
 ---
 title: Check status
-description: gap status shows each component's pin and any skill drift. It writes nothing.
+description: gap status shows each component's pin and any skill drift. It writes nothing and exits 1 on drift.
 ---
 
 ```bash
