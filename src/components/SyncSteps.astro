@@ -1,0 +1,43 @@
+<ol class="steps">
+  <li>
+    <span class="se"><b>§ 01</b> Edit</span>
+    Edit <code>global/AGENTS.md</code>, merge it to <code>master</code>, and pull. <code>gap sync</code> only publishes merged rules.
+  </li>
+  <li>
+    <span class="se"><b>§ 02</b> Sync</span>
+    Run <code>gap sync</code>.
+  </li>
+  <li>
+    <span class="se"><b>§ 03</b> Check</span>
+    Run <code>gap status</code> to see each component's pin and any skill drift. It writes nothing.
+  </li>
+</ol>
+<div class="codewrap">
+  <div class="bar"><span>Terminal</span><button type="button" class="copy-cmd">Copy</button></div>
+  <pre class="code"><span class="p">$ </span>gap sync
+<span class="p">$ </span>gap status</pre>
+</div>
+<div class="callout"><b>Note</b><p><code>gap status</code> exits with code 1 if a skill drifted or a store copy is missing. That is a signal, not a crash.</p></div>
+<div class="callout"><b>Note</b><p>Only <code>gap pin &lt;id&gt;@&lt;ref&gt;</code> moves a pin in <code>gap.lock</code>.</p></div>
+<div class="callout tip">
+  <b>Tip</b>
+  <p>
+    If sync asks about a file it did not write, answer in a terminal. In an agent's shell with no terminal, it prints
+    <code>Refusing to replace foreign file</code>, skips that file, and exits 1.
+  </p>
+</div>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('.copy-cmd');
+  button?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText('gap sync\ngap status');
+      button.textContent = 'Copied';
+      window.setTimeout(() => {
+        button.textContent = 'Copy';
+      }, 1200);
+    } catch {
+      button.textContent = 'Copy';
+    }
+  });
+</script>

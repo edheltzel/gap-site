@@ -1,3 +1,5 @@
+export {};
+
 const root = document.documentElement;
 
 function aria(pref: string) {
