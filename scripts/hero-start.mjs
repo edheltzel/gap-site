@@ -12,9 +12,10 @@
 //     within DOT_MS after the first frame
 //   - canvas at or above 98% of its final ink (stable from then on) within
 //     SETTLE_MS after the first frame
-// It also reads the network log: every <link rel=preload as=font> must carry
-// crossorigin, and every woff2 the page fetches must be preloaded and
-// fetched exactly once (a missing crossorigin makes the browser download twice).
+// It also reads the network log: every woff2 the page fetches must be fetched
+// exactly once, and any <link rel=preload as=font> must carry crossorigin and
+// match a fetched URL (a missing crossorigin makes the browser download twice).
+// The page ships no font preloads today: they delayed FCP on this link.
 //
 // Usage: node scripts/hero-start.mjs [distDir]   (default ./dist)
 // Env: CHROME_PATH, RUNS (default 5). Reports medians.
@@ -201,7 +202,6 @@ check(settle != null && settle <= SETTLE_MS, `canvas >=98% of final ${f(settle)}
 // Network log: runs are independent, a font problem in any run fails.
 const r0 = results[0];
 const pre = r0.preloads.filter((p) => p.as === 'font');
-check(pre.length > 0, `font preloads present (${pre.length})`);
 for (const p of pre) {
   check(p.crossorigin && p.type === 'font/woff2', `preload ${path.basename(p.href)} has crossorigin and type=font/woff2`);
 }
@@ -214,9 +214,9 @@ for (const [i, r] of results.entries()) {
     check(n === 1, `run ${i + 1} preloaded ${path.basename(u)} fetched ${n}x (want exactly 1)`);
   }
   for (const [u, n] of counts) {
-    if (!preUrls.has(u)) check(false, `run ${i + 1} font ${path.basename(u)} fetched ${n}x but not preloaded`);
-    else if (n !== 1) check(false, `run ${i + 1} font ${path.basename(u)} fetched ${n}x`);
+    if (n !== 1) check(false, `run ${i + 1} font ${path.basename(u)} fetched ${n}x (want exactly 1)`);
   }
+  check([...counts.values()].every((n) => n === 1), `run ${i + 1} ${counts.size} woff2 file(s) fetched, each exactly once`);
   check(r.warnings.length === 0, `run ${i + 1} no preload console warnings${r.warnings.length ? ': ' + r.warnings[0] : ''}`);
 }
 

@@ -2,8 +2,6 @@
 import '../styles/tokens.css';
 import '../styles/base.css';
 import ThemeScript from '../components/ThemeScript.astro';
-import geistMono from '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url';
-import geist from '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2?url';
 import { siteDescription, siteName } from '../site.js';
 
 interface Props {
@@ -22,8 +20,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <ThemeScript />
-    <link rel="preload" href={geistMono} as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href={geist} as="font" type="font/woff2" crossorigin />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
