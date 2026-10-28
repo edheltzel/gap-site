@@ -12,7 +12,8 @@
     "preview": "astro preview",
     "check": "astro check",
     "contrast": "node scripts/contrast.mjs",
-    "flash": "node scripts/flash.mjs"
+    "flash": "node scripts/flash.mjs",
+    "logo-round": "node scripts/logo-round.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",
