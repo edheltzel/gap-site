@@ -174,25 +174,28 @@ if (!hero) {
     const page = await context.newPage();
     await page.addInitScript((value) => localStorage.setItem('gap-theme', value), theme);
     await page.goto(base + '/?still=1', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
     const boxes = await page.evaluate(() => {
-      const hide = document.querySelectorAll('.copy, .top, .foot, .spark');
       const acc = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim();
       const acc2 = getComputedStyle(document.documentElement).getPropertyValue('--acc2').trim();
       const pick = [];
       const add = (name, el, color) => {
         if (!el) return;
-        const r = el.getBoundingClientRect();
-        pick.push({
-          name,
-          x: r.x,
-          y: r.y,
-          w: r.width,
-          h: r.height,
-          color: color || getComputedStyle(el).color,
-        });
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const rects = [...range.getClientRects()];
+        const r = rects.length
+          ? {
+              x: Math.min(...rects.map((box) => box.left)),
+              y: Math.min(...rects.map((box) => box.top)),
+              w: Math.max(...rects.map((box) => box.right)) - Math.min(...rects.map((box) => box.left)),
+              h: Math.max(...rects.map((box) => box.bottom)) - Math.min(...rects.map((box) => box.top)),
+            }
+          : el.getBoundingClientRect();
+        pick.push({ name, x: r.x, y: r.y, w: r.w ?? r.width, h: r.h ?? r.height, color: color || getComputedStyle(el).color });
       };
-      add('headline', document.querySelector('h1'));
+      const heading = document.querySelector('h1');
+      add('headline', heading?.firstChild, heading ? getComputedStyle(heading).color : '');
       add('headline line 2', document.querySelector('h1 .l2'));
       add('agent accent', document.querySelector('h1 .l3'), acc);
       add('agent accent end', document.querySelector('h1 .l3'), acc2);
@@ -203,9 +206,14 @@ if (!hero) {
       add('copy', document.querySelector('.cmd .cp'));
       add('hint', document.querySelector('.hint'));
       add('button', document.querySelector('.btn'));
-      hide.forEach((el) => {
-        el.style.visibility = 'hidden';
+      // Keep panels and the shade. Clear each element's own colour, not only
+      // an inherited one, so the sample is the backdrop under the glyphs.
+      document.querySelectorAll('.copy, .copy *, .top, .top *, .foot, .foot *').forEach((el) => {
+        el.style.color = 'transparent';
+        el.style.webkitTextFillColor = 'transparent';
       });
+      const accentLine = document.querySelector('h1 .l3');
+      if (accentLine) accentLine.style.background = 'none';
       return pick;
     });
     const png = PNG.sync.read(await page.screenshot());
