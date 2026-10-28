@@ -15,7 +15,8 @@
     "flash": "node scripts/flash.mjs",
     "hero-start": "node scripts/hero-start.mjs",
     "hero-spin": "node scripts/hero-spin.mjs",
-    "logo-round": "node scripts/logo-round.mjs"
+    "logo-round": "node scripts/logo-round.mjs",
+    "og-image": "node scripts/og-image.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

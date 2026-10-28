@@ -7,3 +7,15 @@ export const siteDescription =
 /** Install line from the GAP README. The hero shows this and the copy button reads it. */
 export const installCommand =
   'curl -fsSL https://raw.githubusercontent.com/edheltzel/GAP/master/scripts/install.sh | sh';
+
+/**
+ * Social preview image. Both the landing page (Base.astro) and every docs page
+ * (astro.config head) resolve `path` against the one `site` origin, so the two
+ * always point at the same absolute URL. File: public/og.png, 1200x630.
+ */
+export const ogImage = {
+  path: '/og.png',
+  width: 1200,
+  height: 630,
+  alt: 'GAP: Global Agent Policies. One set of rules for every coding agent.',
+};
