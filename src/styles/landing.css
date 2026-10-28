@@ -173,7 +173,8 @@ h1 .l3 {
 .cmd {
   display: flex;
   align-items: stretch;
-  max-width: 470px;
+  max-width: min(470px, 100%);
+  min-width: 0;
   border: 1px solid var(--b2);
   background: rgba(var(--s1-rgb), 0.86);
   backdrop-filter: blur(10px);
@@ -189,6 +190,8 @@ h1 .l3 {
 .cmd .t {
   padding: 13px 14px;
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--text);
 }
 

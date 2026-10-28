@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import { installCommand } from '../site.js';
 import '../styles/landing.css';
 ---
 
@@ -30,7 +31,7 @@ import '../styles/landing.css';
         </p>
         <div class="tabs"><b>Go</b></div>
         <div class="cmd">
-          <span class="d">$</span><span class="t">go install ./cmd/gap</span>
+          <span class="d">$</span><span class="t">{installCommand}</span>
           <button class="cp" type="button">Copy</button>
         </div>
         <p class="hint">
@@ -128,11 +129,14 @@ import '../styles/landing.css';
 
 <script>
   import '../scripts/hero.ts';
+  import { installCommand } from '../site.js';
 
   const copy = document.querySelector<HTMLButtonElement>('.cmd .cp');
+  const shown = document.querySelector('.cmd .t')?.textContent ?? '';
+  if (shown !== installCommand) throw new Error('install command mismatch');
   copy?.addEventListener('click', async () => {
     try {
-      await navigator.clipboard.writeText('go install ./cmd/gap');
+      await navigator.clipboard.writeText(installCommand);
       copy.textContent = 'Copied';
       window.setTimeout(() => {
         copy.textContent = 'Copy';
