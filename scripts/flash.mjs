@@ -165,9 +165,14 @@ const hero = await (async () => {
 if (!hero) {
   lines.push('hero pixels: skipped (no canvas). The token gate does not cover glyph pixels.');
 } else {
+  const viewports = [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ];
   for (const theme of ['dark', 'light']) {
+    for (const viewport of viewports) {
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
+      viewport,
       deviceScaleFactor: 1,
       colorScheme: theme,
     });
@@ -234,10 +239,11 @@ if (!hero) {
       }
       if (low < worst.ratio) worst = { name: box.name, ratio: low };
       if (low < 4.5) failed = true;
-      lines.push(`  ${low >= 4.5 ? 'ok  ' : 'FAIL'} hero ${theme} ${box.name} ${low.toFixed(2)}`);
+      lines.push(`  ${low >= 4.5 ? 'ok  ' : 'FAIL'} hero ${theme} ${viewport.width} ${box.name} ${low.toFixed(2)}`);
     }
-    lines.push(`hero ${theme} lowest ${worst.ratio.toFixed(2)} (${worst.name})`);
+    lines.push(`hero ${theme} ${viewport.width} lowest ${worst.ratio.toFixed(2)} (${worst.name})`);
     await context.close();
+    }
   }
 }
 
