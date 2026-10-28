@@ -106,8 +106,8 @@ import '../styles/landing.css';
           <div>
             <span>Files</span>
             <p>
-              <b>It will not overwrite what it did not write.</b> In a shell with no terminal, it prints
-              <code>Refusing to replace foreign file</code> and skips it.
+              <b>It asks before it changes a file it did not write.</b> In a shell with no terminal, it prints
+              <code>Refusing to replace foreign file</code>, skips that file, publishes the rest, and exits 1.
             </p>
           </div>
         </div>
