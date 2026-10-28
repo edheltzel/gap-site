@@ -1,9 +1,9 @@
 ---
 title: Install gap
-description: Install the gap command with Go 1.25 or newer. Node is required only for skills listed in global/skills.json.
+description: Install gap with Go 1.25 or newer, plus git. Node is only needed for extra skills in global/skills.json.
 ---
 
-You need Go 1.25 or newer (`go version`) and Go's bin folder on your `PATH`: `$(go env GOPATH)/bin`, or `GOBIN` if you set it.
+Go 1.25 or newer, plus git. Go's bin folder must be on your `PATH`: `$(go env GOPATH)/bin`, or `GOBIN` if you set it. Check with `go version`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/edheltzel/GAP/master/scripts/install.sh | sh
@@ -18,7 +18,7 @@ That line does four things:
 
 It needs Go 1.25 or newer and git. Installation writes the source checkout and the Go binary. `gap sync` publishes the policy and installs the selected components and skills.
 
-Already have the repo checked out? From its root, `sh scripts/install.sh` builds that copy instead of cloning. `go install ./cmd/gap` from the repo root does the build step on its own. `gap` publishes the checkout it was built from, so it runs from any folder. To skip installing, run `go run ./cmd/gap sync` from a checkout.
+Already have the repo checked out? From its root, `sh scripts/install.sh` builds that copy instead of cloning, including when stdin is redirected. Keep that checkout. `gap` publishes the checkout it was built from, so it runs from any folder. Run the curl command again after `cmd/gap` changes. To skip installing, run `go run ./cmd/gap sync` from a checkout.
 
 Then publish:
 
@@ -28,6 +28,6 @@ gap sync
 
 ## Node
 
-Component skill installation, drift repair, and restore do not use Node or `npx`.
+Node is only needed for extra skills in `global/skills.json`. Component skill installation, drift repair, and restore do not use Node or `npx`.
 
 Additional skills in `global/skills.json` install through skills.sh (`npx`). They require Node. If that installation is needed but `npx` is unavailable, sync still publishes the policy, skips that installation, and exits 1.
