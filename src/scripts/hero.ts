@@ -20,6 +20,15 @@ const freeze = params.has('t') ? Number(params.get('t')) : null;
 const still = reduced || freeze !== null;
 const settled = 99;
 const resolveIn = 1.3;
+// Live only: the globe turns once every spinPeriod seconds. Still, ?t= and
+// reduced-motion do not spin and draw exactly as before.
+const spin = !still;
+const spinPeriod = 72;
+const texW = 256;
+const texH = 64;
+const tilt = 0.32;
+// Spinning: sea sits this far below the flat tone so the glyph count stays level with still.
+const seaBias = 52;
 const period = 7;
 const ramp = ' .:-=+*#%@';
 const cellW = 6;
@@ -75,6 +84,14 @@ let bay: Float32Array;
 let hh: Float32Array;
 let heat: Uint8Array;
 let haze = [0, 0, 0];
+let glow: CanvasGradient;
+let lonU: Float32Array; // texture column of each disc cell at zero rotation
+let latRow: Int32Array; // texture row offset of each disc cell, -1 off the disc
+let boost: Float32Array; // how much a land cell adds to its tone
+let order: Int32Array; // draw order scratch, reused every frame
+let lvl: Uint8Array; // glyph level scratch, reused every frame
+const counts = new Int32Array(31);
+let surface: Uint8Array | null = null;
 
 function readTheme() {
   light = root.dataset.theme === 'light';
@@ -97,38 +114,95 @@ function readTheme() {
   }
 }
 
+// Land and sea, once: value noise that wraps in longitude.
+function makeSurface() {
+  const grid = (cols: number, rows: number, seed: number) => {
+    const g = new Float32Array(cols * rows);
+    for (let i = 0; i < g.length; i++) g[i] = hash(i * 2654435 + seed);
+    return g;
+  };
+  const octaves = [
+    { cols: 8, rows: 5, amp: 1, g: grid(8, 5, 11) },
+    { cols: 16, rows: 10, amp: 0.5, g: grid(16, 10, 23) },
+    { cols: 32, rows: 20, amp: 0.25, g: grid(32, 20, 37) },
+  ];
+  const out = new Uint8Array(texW * texH);
+  for (let y = 0; y < texH; y++) {
+    for (let x = 0; x < texW; x++) {
+      let v = 0;
+      let norm = 0;
+      for (const o of octaves) {
+        const fx = (x / texW) * o.cols;
+        const fy = (y / (texH - 1)) * (o.rows - 1);
+        const x0 = Math.floor(fx);
+        const y0 = Math.floor(fy);
+        const tx = smooth(0, 1, fx - x0);
+        const ty = smooth(0, 1, fy - y0);
+        const x1 = (x0 + 1) % o.cols;
+        const y1 = Math.min(o.rows - 1, y0 + 1);
+        const top = mix(o.g[y0 * o.cols + (x0 % o.cols)], o.g[y0 * o.cols + x1], tx);
+        const bot = mix(o.g[y1 * o.cols + (x0 % o.cols)], o.g[y1 * o.cols + x1], tx);
+        v += mix(top, bot, ty) * o.amp;
+        norm += o.amp;
+      }
+      out[y * texW + x] = Math.round(smooth(0.56, 0.7, v / norm) * 255);
+    }
+  }
+  return out;
+}
+
 function draw(time: number) {
   pen.clearRect(0, 0, width, height);
   const eased = smooth(0, 1, Math.min(1, time / resolveIn));
   const bucket = time / period;
-  const groups: number[][] = [];
+  // Turn: only a longitude shift of the precomputed texture columns, no trig.
+  const shift = spin ? (time / spinPeriod) * texW : 0;
+  const whole = Math.floor(shift);
+  const part = shift - whole;
+  counts.fill(0);
   for (let i = 0; i < count; i++) {
     let value = tone[i];
+    if (spin && latRow[i] >= 0) {
+      const u = lonU[i] - part;
+      const k = Math.floor(u);
+      const f = u - k;
+      const col = (k - whole) & (texW - 1);
+      const a = surface![latRow[i] + col];
+      const b = surface![latRow[i] + ((col + 1) & (texW - 1))];
+      value += (a + (b - a) * f) * boost[i];
+    }
     if (time < settled) {
       const reveal = Math.max(0, Math.min(1, eased * 1.5 - (1 - px[i] / width) * 0.5 - (py[i] / height) * 0.15));
       value *= reveal;
     }
     let level = Math.floor(value + bay[i]);
     if (level > 9) level = 9;
-    if (level < 1) continue;
+    if (level < 1) {
+      lvl[i] = 0;
+      continue;
+    }
     if (time < settled) {
       const j = hash((i * 31 + Math.floor(bucket + hh[i])) * 977);
       if (j < 0.06) level = Math.max(1, level - 1);
       else if (j > 0.95) level = Math.min(9, level + 1);
     }
-    const key = level * 3 + heat[i];
-    (groups[key] || (groups[key] = [])).push(i, level);
+    lvl[i] = level;
+    counts[level * 3 + heat[i] + 1]++;
   }
-  for (let key = 0; key < groups.length; key++) {
-    const group = groups[key];
-    if (!group) continue;
+  for (let key = 1; key < 31; key++) counts[key] += counts[key - 1];
+  for (let i = 0; i < count; i++) {
+    if (lvl[i]) order[counts[lvl[i] * 3 + heat[i]]++] = i;
+  }
+  let at = 0;
+  for (let key = 3; key < 30; key++) {
+    const end = counts[key];
+    if (end === at) continue;
     pen.fillStyle = palette[(key / 3) | 0][key % 3];
-    for (let n = 0; n < group.length; n += 2) pen.fillText(ramp[group[n + 1]], px[group[n]], py[group[n]]);
+    for (; at < end; at++) {
+      const i = order[at];
+      pen.fillText(ramp[lvl[i]], px[i], py[i]);
+    }
   }
-  const hazeAlpha = light ? 0.09 : 0.08;
-  const glow = pen.createRadialGradient(haze[0], haze[1], 0, haze[0], haze[1], haze[2] * 0.7);
-  glow.addColorStop(0, `rgba(${accent.join(',')},${hazeAlpha})`);
-  glow.addColorStop(1, `rgba(${accent.join(',')},0)`);
   pen.globalCompositeOperation = 'destination-over';
   pen.fillStyle = glow;
   pen.fillRect(0, 0, width, height);
@@ -171,6 +245,15 @@ function layout() {
   bay = new Float32Array(cap);
   hh = new Float32Array(cap);
   heat = new Uint8Array(cap);
+  order = new Int32Array(cap);
+  lvl = new Uint8Array(cap);
+  if (spin) {
+    surface ??= makeSurface();
+    lonU = new Float32Array(cap);
+    latRow = new Int32Array(cap).fill(-1);
+    boost = new Float32Array(cap);
+  }
+  const lean = [Math.cos(tilt), Math.sin(tilt)];
   count = 0;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -195,19 +278,34 @@ function layout() {
         t = (Math.exp(-outside / 0.025) * 0.6 + Math.exp(-outside / 0.22) * 0.07) * lit;
       }
       if (light) t = Math.min(1, t * 1.15);
-      if (t < 0.012) continue;
+      // Spinning: every disc cell stays, so land can turn into view on the night side.
+      if (t < 0.012 && !(spin && rr < 1)) continue;
       px[count] = x;
       py[count] = y;
       tone[count] = t * 9;
       bay[count] = bayer[r & 7][c & 7];
       hh[count] = hash(r * 977 + c * 131 + 7);
       heat[count] = Math.min(2, Math.floor(lit * Math.min(1, t * 2.4) * 3));
+      if (spin && rr < 1) {
+        // Where this cell sits on the globe, once. Tilt the axis, then read lat/lon.
+        const depth = Math.sqrt(1 - rr * rr);
+        const up = -dy * lean[0] + depth * lean[1];
+        const front = depth * lean[0] + dy * lean[1];
+        lonU[count] = (Math.atan2(dx, front) / (2 * Math.PI) + 0.5) * texW;
+        latRow[count] = Math.min(texH - 1, Math.floor((Math.asin(Math.max(-1, Math.min(1, up))) / Math.PI + 0.5) * texH)) * texW;
+        boost[count] = (3.4 / 255) * (0.22 + 0.78 * lit) * depth ** 0.5;
+        tone[count] -= seaBias * boost[count];
+      }
       count++;
     }
   }
   pen.font = `${light ? 600 : 400} ${fontSize}px "Geist Mono Variable", "Geist Mono", ui-monospace, Menlo, Consolas, monospace`;
   pen.textAlign = 'center';
   pen.textBaseline = 'middle';
+  const hazeAlpha = light ? 0.09 : 0.08;
+  glow = pen.createRadialGradient(haze[0], haze[1], 0, haze[0], haze[1], haze[2] * 0.7);
+  glow.addColorStop(0, `rgba(${accent.join(',')},${hazeAlpha})`);
+  glow.addColorStop(1, `rgba(${accent.join(',')},0)`);
   sparkles();
   draw(still ? (freeze ?? settled) : clock());
 }
