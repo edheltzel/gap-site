@@ -1,10 +1,13 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
-import { siteDescription, siteName } from './src/site.js';
+import { ogImage, siteDescription, siteName } from './src/site.js';
 
 /** Public origin. Override with SITE_URL. The subdomain serves the site at /, so there is no `base`. */
 const site = process.env.SITE_URL || 'https://gap.edheltzel.codes';
+
+/** Absolute so crawlers can fetch it; same URL the landing page uses (src/layouts/Base.astro). */
+const ogImageUrl = new URL(ogImage.path, site).href;
 
 export default defineConfig({
   site,
@@ -15,6 +18,12 @@ export default defineConfig({
       description: siteDescription,
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/edheltzel/GAP' }],
       head: [
+        { tag: 'meta', attrs: { property: 'og:image', content: ogImageUrl } },
+        { tag: 'meta', attrs: { property: 'og:image:width', content: String(ogImage.width) } },
+        { tag: 'meta', attrs: { property: 'og:image:height', content: String(ogImage.height) } },
+        { tag: 'meta', attrs: { property: 'og:image:alt', content: ogImage.alt } },
+        { tag: 'meta', attrs: { name: 'twitter:image', content: ogImageUrl } },
+        { tag: 'meta', attrs: { name: 'twitter:image:alt', content: ogImage.alt } },
         { tag: 'link', attrs: { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' } },
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' } },
       ],
