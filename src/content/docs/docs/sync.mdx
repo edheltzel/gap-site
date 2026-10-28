@@ -1,0 +1,21 @@
+---
+title: Sync your setup
+description: gap sync copies your rules into every agent's file and installs any listed skills that are missing. It never moves a skill pin.
+---
+
+import SyncSteps from '../../../components/SyncSteps.astro';
+import Flow from '../../../components/Flow.astro';
+
+<p class="lede"><code>gap sync</code> copies your rules into every agent's file and installs any listed skills that are missing. It never moves a skill pin.</p>
+
+## The three-step flow
+
+<SyncSteps />
+
+## One rules file, six agent files
+
+Write your policy once in `global/AGENTS.md`. `gap sync` copies it into the file each agent already reads: Claude, Pi, OMP, Codex, Cursor and Empryo. Grok reads the Claude copy.
+
+## How it flows
+
+<Flow />
