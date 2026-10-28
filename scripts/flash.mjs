@@ -165,34 +165,42 @@ const hero = await (async () => {
 if (!hero) {
   lines.push('hero pixels: skipped (no canvas). The token gate does not cover glyph pixels.');
 } else {
+  const viewports = [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ];
   for (const theme of ['dark', 'light']) {
+    for (const viewport of viewports) {
     const context = await browser.newContext({
-      viewport: { width: 1280, height: 800 },
+      viewport,
       deviceScaleFactor: 1,
       colorScheme: theme,
     });
     const page = await context.newPage();
     await page.addInitScript((value) => localStorage.setItem('gap-theme', value), theme);
     await page.goto(base + '/?still=1', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(600);
     const boxes = await page.evaluate(() => {
-      const hide = document.querySelectorAll('.copy, .top, .foot, .spark');
       const acc = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim();
       const acc2 = getComputedStyle(document.documentElement).getPropertyValue('--acc2').trim();
       const pick = [];
       const add = (name, el, color) => {
         if (!el) return;
-        const r = el.getBoundingClientRect();
-        pick.push({
-          name,
-          x: r.x,
-          y: r.y,
-          w: r.width,
-          h: r.height,
-          color: color || getComputedStyle(el).color,
-        });
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const rects = [...range.getClientRects()];
+        const r = rects.length
+          ? {
+              x: Math.min(...rects.map((box) => box.left)),
+              y: Math.min(...rects.map((box) => box.top)),
+              w: Math.max(...rects.map((box) => box.right)) - Math.min(...rects.map((box) => box.left)),
+              h: Math.max(...rects.map((box) => box.bottom)) - Math.min(...rects.map((box) => box.top)),
+            }
+          : el.getBoundingClientRect();
+        pick.push({ name, x: r.x, y: r.y, w: r.w ?? r.width, h: r.h ?? r.height, color: color || getComputedStyle(el).color });
       };
-      add('headline', document.querySelector('h1'));
+      const heading = document.querySelector('h1');
+      add('headline', heading?.firstChild, heading ? getComputedStyle(heading).color : '');
       add('headline line 2', document.querySelector('h1 .l2'));
       add('agent accent', document.querySelector('h1 .l3'), acc);
       add('agent accent end', document.querySelector('h1 .l3'), acc2);
@@ -203,9 +211,14 @@ if (!hero) {
       add('copy', document.querySelector('.cmd .cp'));
       add('hint', document.querySelector('.hint'));
       add('button', document.querySelector('.btn'));
-      hide.forEach((el) => {
-        el.style.visibility = 'hidden';
+      // Keep panels and the shade. Clear each element's own colour, not only
+      // an inherited one, so the sample is the backdrop under the glyphs.
+      document.querySelectorAll('.copy, .copy *, .top, .top *, .foot, .foot *').forEach((el) => {
+        el.style.color = 'transparent';
+        el.style.webkitTextFillColor = 'transparent';
       });
+      const accentLine = document.querySelector('h1 .l3');
+      if (accentLine) accentLine.style.background = 'none';
       return pick;
     });
     const png = PNG.sync.read(await page.screenshot());
@@ -226,10 +239,11 @@ if (!hero) {
       }
       if (low < worst.ratio) worst = { name: box.name, ratio: low };
       if (low < 4.5) failed = true;
-      lines.push(`  ${low >= 4.5 ? 'ok  ' : 'FAIL'} hero ${theme} ${box.name} ${low.toFixed(2)}`);
+      lines.push(`  ${low >= 4.5 ? 'ok  ' : 'FAIL'} hero ${theme} ${viewport.width} ${box.name} ${low.toFixed(2)}`);
     }
-    lines.push(`hero ${theme} lowest ${worst.ratio.toFixed(2)} (${worst.name})`);
+    lines.push(`hero ${theme} ${viewport.width} lowest ${worst.ratio.toFixed(2)} (${worst.name})`);
     await context.close();
+    }
   }
 }
 
