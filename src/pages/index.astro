@@ -81,7 +81,7 @@ import '../styles/landing.css';
           <article class="card">
             <div class="n"><span>Step</span><i>03</i></div>
             <h3>Check status</h3>
-            <p><code>gap status</code> shows each component's pin and any skill drift. It writes nothing.</p>
+            <p><code>gap status</code> shows each component's pin and any skill drift. It writes nothing and exits 1 on drift.</p>
           </article>
         </div>
       </section>
@@ -99,8 +99,7 @@ import '../styles/landing.css';
           <div>
             <span>Status</span>
             <p>
-              <b>Drift is a signal, not a crash.</b> <code>gap status</code> exits 1 if a skill drifted or a store
-              copy is missing.
+              <b>Drift is a signal, not a crash.</b> <code>gap status</code> writes nothing and exits 1 on drift.
             </p>
           </div>
           <div>
