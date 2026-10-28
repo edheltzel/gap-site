@@ -13,7 +13,8 @@
     "check": "astro check",
     "contrast": "node scripts/contrast.mjs",
     "flash": "node scripts/flash.mjs",
-    "hero-start": "node scripts/hero-start.mjs"
+    "hero-start": "node scripts/hero-start.mjs",
+    "logo-round": "node scripts/logo-round.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

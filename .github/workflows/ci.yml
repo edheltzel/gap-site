@@ -24,3 +24,4 @@ jobs:
           fi
       - run: npm run flash
       - run: npm run hero-start
+      - run: npm run logo-round
