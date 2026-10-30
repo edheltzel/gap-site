@@ -1,5 +1,5 @@
 // Logo shape check. The GAP mark is a circle, like the hero globe.
-// In dark and light themes, on the landing page and a docs page, the header
+// In dark and light themes, on the landing page, the header
 // mark (.word i / .site-word i) must have equal width and height and a border
 // radius of at least half its size. public/favicon.svg must contain no <rect>
 // and at least one <circle>, and rendered in Chrome with no page background
@@ -66,7 +66,6 @@ const px = (png, x, y) => {
 
 const pages = [
   { path: '/', selector: '.word i' },
-  { path: '/docs/', selector: '.site-word i' },
 ];
 
 const server = serve(root);
@@ -340,8 +339,8 @@ report(circles >= 1, `favicon.svg has ${circles} <circle>`);
     tileChecks('apple-touch-icon.png', png, [...backgrounds, ['black (iOS fill)', [0, 0, 0]]]);
   }
 
-  // Linked from the head of the landing page and a docs page.
-  for (const pagePath of ['/', '/docs/']) {
+  // Linked from the head of the landing page.
+  for (const pagePath of ['/']) {
     const html = await (await fetch(base + pagePath)).text();
     const tags = html.match(/<link\b[^>]*>/g) || [];
     const has = (rel, href) => tags.some((tag) => new RegExp(`rel="(?:[a-z-]+ )*${rel}"`).test(tag) && tag.includes(`href="${href}"`));

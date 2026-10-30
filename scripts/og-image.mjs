@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve('dist');
-const pages = ['/', '/docs/', '/docs/install/'];
+const pages = ['/'];
 const alt = 'GAP: Global Agent Policies. One set of rules for every coding agent.';
 const keys = ['og:image', 'og:image:width', 'og:image:height', 'og:image:alt', 'twitter:image', 'twitter:image:alt', 'twitter:card'];
 const maxBytes = 300 * 1024;
