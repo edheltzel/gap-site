@@ -9,9 +9,8 @@ export const installCommand =
   'curl -fsSL https://raw.githubusercontent.com/edheltzel/GAP/master/scripts/install.sh | sh';
 
 /**
- * Social preview image. Both the landing page (Base.astro) and every docs page
- * (astro.config head) resolve `path` against the one `site` origin, so the two
- * always point at the same absolute URL. File: public/og.png, 1200x630.
+ * Social preview image. The landing page (Base.astro) resolves `path` against
+ * the `site` origin. File: public/og.png, 1200x630.
  */
 export const ogImage = {
   path: '/og.png',

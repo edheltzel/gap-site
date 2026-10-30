@@ -1,5 +1,5 @@
 // Theme flash check. System scheme is forced opposite the saved choice, both
-// directions, on the landing page and a docs page, CPU throttled 4x.
+// directions, on the landing page, CPU throttled 4x.
 // A frame counts only once the browser has painted. Chrome's blank
 // pre-navigation frame is not one of ours (it is pure black or pure white).
 //
@@ -77,7 +77,7 @@ const cases = [
   { system: 'dark', saved: null, expect: 'dark' },
 ];
 
-const pages = ['/', '/docs/'];
+const pages = ['/'];
 
 const server = serve(root);
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
