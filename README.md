@@ -1,23 +1,8 @@
-# GAP: Global Agent Policies
+# GAP: Global Agent Policies website (archived)
 
-Landing page and docs for [GAP](https://github.com/edheltzel/GAP). One rules file, copied into the file each coding agent already reads. Docs: [gap.edheltzel.codes](https://gap.edheltzel.codes).
+This repository is archived. The website at [gap.edheltzel.codes](https://gap.edheltzel.codes) now builds from [`site/`](https://github.com/edheltzel/GAP/tree/master/site) in [edheltzel/GAP](https://github.com/edheltzel/GAP), moved there in [edheltzel/GAP#107](https://github.com/edheltzel/GAP/pull/107). Open issues and changes there.
 
-## Install GAP
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/edheltzel/GAP/master/scripts/install.sh | sh
-```
-
-## Local development
-
-Needs Node 22.
-
-```bash
-npm ci
-npm run dev
-```
-
-`npm run build` writes the static site to `dist/`.
+The history here is kept for reference. The Cloudflare Pages project `gap-site` (`gap-site-292.pages.dev`) no longer deploys from this repository.
 
 ## License
 
